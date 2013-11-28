@@ -18,6 +18,8 @@
 @property (nonatomic, strong) UIImageView*      positionDot;
 @property (nonatomic, strong) ESTBeacon*        selectedBeacon;
 
+@property (nonatomic, retain) NSMutableArray* points;
+
 @property (nonatomic) float dotMinPos;
 @property (nonatomic) float dotRange;
 
@@ -31,6 +33,8 @@
 
     /////////////////////////////////////////////////////////////
     // setup Estimote beacon manager
+    
+    self.points = [NSMutableArray new];
     
     // create manager instance
     self.beaconManager = [[ESTBeaconManager alloc] init];
@@ -69,11 +73,11 @@
     /////////////////////////////////////////////////////////////
     // setup dot image
     
-    self.positionDot = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"dotImage"]];
-    [self.positionDot setCenter:self.view.center];
-    [self.positionDot setAlpha:1.];
-    
-    [self.view addSubview:self.positionDot];
+//    self.positionDot = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"dotImage"]];
+//    [self.positionDot setCenter:self.view.center];
+//    [self.positionDot setAlpha:1.];
+//    
+//    [self.view addSubview:self.positionDot];
     
     self.dotMinPos = 150;
     self.dotRange = self.view.bounds.size.height  - 220;
@@ -84,34 +88,39 @@
      didRangeBeacons:(NSArray *)beacons
             inRegion:(ESTBeaconRegion *)region
 {
-    if([beacons count] > 0)
-    {
-        if(!self.selectedBeacon)
-        {
-            // initially pick closest beacon
-            self.selectedBeacon = [beacons objectAtIndex:0];
+    if ([beacons count] <= 0)
+        return ;
+    
+    if ([beacons count] == [self.points count]) {
+        // pass
+    }
+    else if ([beacons count] > [self.points count]) {
+        for (NSInteger i = [self.points count]; i < [beacons count]; i++) {
+            UIImageView* img = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"dotImage"]];
+            [img setCenter:self.view.center];
+            [img setAlpha:1.];
+            
+            [self.view addSubview:img];
+            [self.points addObject:img];
         }
-        else
-        {
-            for (ESTBeacon* cBeacon in beacons)
-            {
-                // update beacon it same as selected initially
-                if([self.selectedBeacon.ibeacon.major unsignedShortValue] == [cBeacon.ibeacon.major unsignedShortValue] &&
-                   [self.selectedBeacon.ibeacon.minor unsignedShortValue] == [cBeacon.ibeacon.minor unsignedShortValue])
-                {
-                    self.selectedBeacon = cBeacon;
-                }
-            }
+    }
+    else {
+        for (NSInteger i = [self.points count]; i > [beacons count]; i--) {
+            [self.points removeObjectAtIndex:i];
         }
+    }
+    
+    for (NSInteger i = 0 ; i < [beacons count]; i++) {
+        ESTBeacon* cBeacon = [beacons objectAtIndex:i];
+        UIImageView* view = [self.points objectAtIndex:i];
         
         // based on observation rssi is not getting bigger then -30
         // so it changes from -30 to -100 so we normalize
-        float distFactor = ((float)self.selectedBeacon.ibeacon.rssi + 30) / -70;
-        
+        float distFactor = ((float)cBeacon.ibeacon.rssi + 30) / -70;
         
         // calculate and set new y position
         float newYPos = self.dotMinPos + distFactor * self.dotRange;
-        self.positionDot.center = CGPointMake(self.view.bounds.size.width / 2, newYPos);
+        view.center = CGPointMake(self.view.bounds.size.width / 2, newYPos);
     }
 }
 
